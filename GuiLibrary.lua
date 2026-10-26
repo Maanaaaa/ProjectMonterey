@@ -16,21 +16,17 @@ function pallet.fontFace(weight)
     fontFace.Weight = Enum.FontWeight[weight or 'Regular']
     return fontFace
 end
+
 local oldgetcustomasset = getcustomasset
 local getcustomasset = function(asset)
     if not asset or asset == '' then return '' end
 
-    if not shared.montereyDeveloper or not isfile(asset) then
+    if not shared.montereyDeveloper and not isfile(asset) then
         local suc, res = pcall(function()
             asset = string.split(asset, 'ProjectMonterey/')[2]
             return game:HttpGet('https://raw.githubusercontent.com/Maanaaaa/ProjectMonterey/refs/heads/main/'..asset)
         end)
         if suc then return res end
-
-        local asset = string.find(asset, 'ProjectMonterey/Assets/') and string.split(asset, 'ProjectMonterey/Assets/')[1] or asset
-        local asset = string.find(asset, '/') and string.split(asset, '/')[3] or asset
-
-        return assets[asset]
     elseif shared.montereyDeveloper or isfile(asset) then
         local suc, res = pcall(function()
             return oldgetcustomasset(asset)
@@ -38,7 +34,7 @@ local getcustomasset = function(asset)
         if suc then return res end
     end
 
-    return
+    return ''
 end
 
 local userInputService = cloneref(game:GetService('UserInputService'))
