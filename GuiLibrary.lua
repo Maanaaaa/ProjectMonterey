@@ -37,6 +37,22 @@ local getcustomasset = function(asset)
     return ''
 end
 
+local function getFile(path)
+    path = tostring(path)
+    if not shared.montereyDeveloper and not isfile(path) then
+        path = string.split(path, 'ProjectMonterey/')[2]
+        local suc, res = pcall(function()
+            return game:HttpGet('https://raw.githubusercontent.com/Maanaaaa/ProjectMonterey/refs/heads/main/'..tostring(path))
+        end)
+        if suc then
+            writefile(path, res)
+            return res
+        end
+    elseif shared.montereyDeveloper or isfile(path) then
+        return readfile(path)
+    end
+end
+
 local userInputService = cloneref(game:GetService('UserInputService'))
 local tweenService = cloneref(game:GetService('TweenService'))
 local textService = cloneref(game:GetService('TextService'))
@@ -48,10 +64,10 @@ local lplr = players.LocalPlayer
 local textBoundsParams = Instance.new('GetTextBoundsParams')
 local coreGui
 
-local components = loadfile('ProjectMonterey/Libraries/Components.lua')()
-local notifications = shared.montereyNotifications or loadfile('ProjectMonterey/Libraries/Notifications.lua')()
+local components = loadstring(getFile('ProjectMonterey/Libraries/Components.lua'))()
+local notifications = shared.montereyNotifications or loadstring(getFIle('ProjectMonterey/Libraries/Notifications.lua'))()
 shared.montereyNotifications = notifications
-local signalLibrary = loadfile('ProjectMonterey/Libraries/SignalLibrary.lua')()
+local signalLibrary = lodastring(getFile('ProjectMonterey/Libraries/SignalLibrary.lua'))()
 library.components = components
 library.signalLibrary = signalLibrary
 
