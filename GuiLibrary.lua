@@ -24,7 +24,13 @@ local getcustomasset = function(asset)
     if not shared.montereyDeveloper and not isfile(asset) then
         local suc, res = pcall(function()
             asset = string.split(asset, 'ProjectMonterey/')[2]
-            return game:HttpGet('https://raw.githubusercontent.com/Maanaaaa/ProjectMonterey/refs/heads/main/'..asset)
+            local suc, res = pcall(function()
+                return game:HttpGet('https://raw.githubusercontent.com/Maanaaaa/ProjectMonterey/refs/heads/main/'..asset)
+            end)
+            if suc then
+                writefile(asset, res)
+                return oldgetcustomasset(asset)
+            end
         end)
         if suc then return res end
     elseif shared.montereyDeveloper or isfile(asset) then
