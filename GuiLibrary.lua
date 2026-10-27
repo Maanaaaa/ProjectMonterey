@@ -155,7 +155,7 @@ local function addStroke(obj, color, thickness, zindex, transparency, enabled)
 end
 
 function library:getLastProfile()
-    return readfile('ProjectMonterey/Profiles/CurrentProfile.txt')
+    return isfile('ProjectMonterey/Profiles/CurrentProfile.txt') and readfile('ProjectMonterey/Profiles/CurrentProfile.txt')
 end
 
 function library:SaveProfile(profile)
