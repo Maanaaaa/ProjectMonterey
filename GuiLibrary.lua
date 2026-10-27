@@ -71,9 +71,9 @@ local textBoundsParams = Instance.new('GetTextBoundsParams')
 local coreGui
 
 local components = loadstring(getFile('ProjectMonterey/Libraries/Components.lua'))()
-local notifications = shared.montereyNotifications or loadstring(getFIle('ProjectMonterey/Libraries/Notifications.lua'))()
+local notifications = shared.montereyNotifications or loadstring(getFile('ProjectMonterey/Libraries/Notifications.lua'))()
 shared.montereyNotifications = notifications
-local signalLibrary = lodastring(getFile('ProjectMonterey/Libraries/SignalLibrary.lua'))()
+local signalLibrary = loadstring(getFile('ProjectMonterey/Libraries/SignalLibrary.lua'))()
 library.components = components
 library.signalLibrary = signalLibrary
 
