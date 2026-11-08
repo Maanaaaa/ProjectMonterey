@@ -51,7 +51,6 @@ local function getFile(path)
             return game:HttpGet('https://raw.githubusercontent.com/Maanaaaa/ProjectMonterey/refs/heads/main/'..tostring(path))
         end)
         if suc then
-            writefile(path, res)
             return res
         end
     elseif shared.montereyDeveloper or isfile(path) then
@@ -164,10 +163,10 @@ function library:SaveProfile(profile)
         Toggles = {}
     }
 
-    if self.window then
-        self.window:Save(profileData)
+    if self.windowapi then
+        self.windowapi:Save(profileData)
 
-        for _, tab in next, self.window.Tabs do
+        for _, tab in next, self.windowapi.Tabs do
             if not tab.Custom then
                 for _, toggle in next, tab.Toggles do
                     if not toggle.Unsaveable then
@@ -201,10 +200,10 @@ function library:LoadProfile(profile)
     if isProfile then
         local suc, res = pcall(function()
             local profileData = httpService:JSONDecode(readfile('ProjectMonterey/Profiles/'..profile..'/'..game.PlaceId..'.json'))
-            if self.window then
-                self.window:Load(profileData[self.window.Name])
+            if self.windowapi then
+                self.windowapi:Load(profileData[self.windowapi.Name])
 
-                for _, tab in next, self.window.Tabs do
+                for _, tab in next, self.windowapi.Tabs do
                     if not tab.Custom then
                         for _, toggle in next, tab.Toggles do
                             local toggleData = profileData.Toggles[toggle.Name]
@@ -936,8 +935,10 @@ function library:CreateWindow(title)
         addCorner(background, UDim.new(0, 11), UDim.new(0, 0), UDim.new(0, 0), UDim.new(0, 0))
         if scrollable then
             background.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            background.CanvasSize = UDim2.new(0, 0, 0, 0)
             background.ScrollBarImageColor3 = Color3.fromRGB(180, 166, 206)
             background.ScrollBarThickness = 7
+            addPadding(background, UDim.new(0, 0), UDim.new(0, 10))
         end
         local container = Instance.new('Frame', background)
         container.BackgroundTransparency = 1
@@ -1028,6 +1029,7 @@ function library:CreateWindow(title)
             optionsContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
             optionsContainer.BackgroundTransparency = 1
             optionsContainer.BorderSizePixel = 0
+            optionsContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
             optionsContainer.Position = UDim2.fromOffset(171, -2)
             optionsContainer.Size = UDim2.new(1, -171, 1, 0)
             optionsContainer.ScrollBarThickness = 7
@@ -1230,7 +1232,7 @@ function library:CreateWindow(title)
                     local callback = args.Callback or function() end
                     local optionapi = {
                         Name = name,
-                        Enabled = enabled
+                        Enabled = false
                     }
                     library:addClean(optionapi)
                     table.insert(toggleapi.Options, optionapi)
