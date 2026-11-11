@@ -296,17 +296,19 @@ end
 function library:RemoveToggle(name)
     if not name then return end
 
-    for _, tab in next, self.window.Tabs do
-        if not tab.Custom then
-            for _, toggle in next, tab.Toggles do
-                if toggle.Name == name then
-                    if toggle.Enabled then toggle:Toggle() end
+    if self.windowapi then
+        for _, tab in next, self.windowapi.Tabs do
+            if not tab.Custom then
+                for _, toggle in next, tab.Toggles do
+                    if toggle.Name == name then
+                        if toggle.Enabled then toggle:Toggle() end
 
-                    toggle.container:Destroy()
-                    toggle.optionsContainer:Destroy()
-                    table.remove(tab.Toggles, table.find(tab.Toggles, name))
+                        toggle.container:Destroy()
+                        toggle.optionsContainer:Destroy()
+                        table.remove(tab.Toggles, table.find(tab.Toggles, name))
 
-                    return
+                        return
+                    end
                 end
             end
         end
@@ -384,83 +386,6 @@ function library:getTextSize(text, fontFace, textSize)
     textBoundsParams.Width = 1000
     return textService:GetTextBoundsAsync(textBoundsParams)
 end
-
---[[
-local notifications = {
-    storage = {},
-    tweenInfo = TweenInfo.new(0.4)
-}
-
-function library:ReSortNotifications()
-    local y = 0
-
-    table.sort(notifications.storage, function(a, b)
-        return a.holder.Position.Y.Offset < b.holder.Position.Y.Offset
-    end)
-
-    for i, notification in next, notifications.storage do
-        notification.index = i
-        if not notification.removing then
-            task.spawn(function()
-                tweenService:Create(notification.holder, notifications.tweenInfo, {Position = UDim2.new(1, -359, 0, y)}):Play()
-            end)
-            y += 66
-        end
-    end
-end
-
-function library:CreateNotification(args)
-    task.spawn(function()
-        local notification = {
-            index = #notifications.storage + 1,
-            removing = false
-        }
-        local holder = Instance.new('Frame', notificationsFolder)
-        holder.BackgroundColor3 = Color3.fromRGB(37, 37, 37)
-        holder.BackgroundTransparency = 0.39
-        holder.BorderSizePixel = 0
-        holder.Position = UDim2.new(1, 1, 0, notification.index > 1 and (notification.index - 1) * 66) --.. * 66 + 42 or 42
-        holder.Size = UDim2.fromOffset(342, 56)
-        holder.ZIndex = 10
-        notification.holder = holder
-        addCorner(holder, UDim.new(0, 12))
-        addStroke(holder, Color3.fromRGB(70, 70, 70), 1, 1, 0.39)
-        local title = Instance.new('TextLabel', holder)
-        title.BackgroundTransparency = 1
-        title.BorderSizePixel = 0
-        title.Position = UDim2.fromOffset(args.Icon and 55 or 11, 12)
-        title.Size = UDim2.new(1, -55, 0, 10)
-        title.FontFace = pallet.fontFace()
-        title.Text = tostring(args.Title)
-        title.TextColor3 = Color3.fromRGB(236, 234, 241)
-        title.TextSize = 15
-        title.TextXAlignment = Enum.TextXAlignment.Left
-        title.ZIndex = 10
-        local description = Instance.new('TextLabel', holder)
-        description.BackgroundTransparency = 1
-        description.BorderSizePixel = 0
-        description.Position = UDim2.fromOffset(args.Icon and 55 or 11, 26)
-        description.Size = UDim2.new(1, -55, 0, 12)
-        description.FontFace = pallet.fontFace()
-        description.Text = tostring(args.Description)
-        description.TextColor3 = Color3.fromRGB(236, 234, 241)
-        description.TextSize = 15
-        description.TextXAlignment = Enum.TextXAlignment.Left
-        description.TextYAlignment = Enum.TextYAlignment.Top
-        description.ZIndex = 10
-        table.insert(notifications.storage, notification)
-
-        debris:AddItem(holder, args.Time + 0.8)
-        tweenService:Create(holder, notifications.tweenInfo, {Position = UDim2.new(1, -359, 0, notification.index > 1 and (notification.index - 1) * 66)}):Play()  --.. * 66 + 42 or 42
-        task.wait(args.Time)
-        table.remove(notifications.storage, table.find(notifications.storage, notification))
-        library.ReSortNotifications()
-        tweenService:Create(holder, notifications.tweenInfo, {Position = UDim2.new(1, 1, 0, holder.Position.Y.Offset)}):Play()  --.. 42 + notification.index > 1 and (notification.index - 1) * 66 + 42 or 42
-    end)
-end
-
-library:Clean(notificationsFolder.ChildRemoved:Connect(library.ReSortNotifications))
-]]
 
 function library:CreateWindow(title)
     local windowapi = {
@@ -1045,9 +970,11 @@ function library:CreateWindow(title)
                 for _, v in next, tabapi.Toggles do
                     if v.Name == name then
                         v.optionsHolder.Visible = true
+                        v.optionsContainer.Visible = true
                         v.Selected = true
                     else
                         v.optionsHolder.Visible = false
+                        v.optionsContainer.Visible = false
                         v.Selected = false
                     end
                 end
@@ -1151,12 +1078,14 @@ function library:CreateWindow(title)
                     ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(68, 63, 73)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(79, 74, 83)), ColorSequenceKeypoint.new(1, Color3.fromRGB(97, 92, 100))},
                     90
                 )
-                local container = Instance.new('Frame', holder2)
+                local container = Instance.new('Frame', optionsContainer)
                 container.AutomaticSize = Enum.AutomaticSize.Y
                 container.BackgroundTransparency = 1
                 container.BorderSizePixel = 0
+                container.LayoutOrder = #tabapi.Toggles
                 container.Size = UDim2.fromScale(1, 0)
                 container.Position = UDim2.fromOffset(0, 50)
+                container.Visible = false
                 components.uiListLayout(container)
                 toggleapi.optionsContainer = container
                 local textSize = library:getTextSize(longDescription, pallet.fontFace(), 12)
