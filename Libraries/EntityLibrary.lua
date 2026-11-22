@@ -6,7 +6,9 @@ local api = {
     character = nil,
     health = 0,
 	tool = nil,
+	entities = {},
     players = {},
+	npcs = {},
     connections = {}
 }
 
@@ -31,8 +33,6 @@ local userInputService = cloneref(game:GetService('UserInputService'))
 local players = cloneref(game:GetService('Players'))
 local lplr = players.LocalPlayer
 local camera = workspace.CurrentCamera
-
--- // current shit to do: add wait for child function to fix humanoid hp setting to 0 when character added is fired
 
 local function getChild(child: any, parent: Instance, timeout: number, class: boolean, property: boolean) --here doing like so so its easier to use
 	if not child or not parent then return end
@@ -106,7 +106,6 @@ end
 function api.getHumanoid(plr)
 	plr = plr or lplr
 	if api.isAlive(plr) then
-		--print(plr, getChild('Humanoid', api.getCharacter(plr), 15, true))
 		return getChild('Humanoid', api.getCharacter(plr), 15, true)
 	end
 end
@@ -131,9 +130,7 @@ end
 
 function api.getHead(plr)
 	plr = plr or lplr
-	--print('getting head for ',plr, api.isAlive(plr), api.isAlive(plr, true))
 	if api.isAlive(plr, true) then
-		--print('passed after check in getting head for ',plr)
 		return getChild('Head', api.getCharacter(plr))
 	end
 end
@@ -152,60 +149,112 @@ function api.getTeamColor(plr)
 end
 
 function api.teamCheck(plr)
-	return lplr.Team ~= plr.Team
+	return typeof(plr) == 'Instance' and plr.ClassName == 'Player' and lplr.Team ~= plr.Team
 end
 
-function api.isVisible(pos, wallCheck, ...)
-	if not wallCheck then
-		return true
-	end
+function api.wallCheck(pos, ...)
 	return #camera:GetPartsObscuringTarget({pos}, {camera, lplr.Character, ...}) == 0
 end
 
 function api.isTargetable(plr, plrData)
-    if not plr.team then return true end
+	if not plr then return false end
+    if plr.ClassName == 'Player' and not plr.team then return true end
     if lplr and not lplr.Team then return true end
     if plr.Team ~= lplr.Team then return end
     if plrData and plrData.health and plrData.health > 0 then return end
     return false
 end
 
-function api.entitiesAroundMouse(args)
+function api.entitiesAroundCharacter(args)
 	local distance = args.maxDistance or 100
-	local teamCheck = args.teamCheck or false
-	local targetCheck = args.targetCheck or false
-	local wallCheck = args.wallCheck or false
+	local targetCheck = args.targetCheck == nil and false or args.targetCheck
+	local teamCheck = args.teamCheck == nil and false or args.teamCheck
+	local wallCheck = args.wallCheck == nil and false or args.wallCheck
 	local targetPart = args.targetPart or 'root'
 	targetPart = (targetPart == 'RootPart' and 'root' or targetPart):lower()
-	local players = args.players or false
-	local npcs = args.npcs or false
+	local players = args.players == nil and true or args.players
+	local npcs = args.npcs == nil and false or args.npcs
+	local closest = args.closest == nil and false or args.closest
 	local maxEntities = args.maxEntities or 1
 	local entities = {}
 
-	if players then
-		for _, plr in next, api.players do
-			--print('in entitiesaroundmouse plr', plr, plr.plr, plr.alive, plr.npc)
-			if plr.plr ~= lplr and plr.alive then
-				--print('after check passed only ', plr, plr.plr, plr.alive, plr.npc)
-				local part = plr[targetPart]
-				if not part then return end
-				--print(targetPart, part, plr.plr)
-				if (not teamCheck or api.teamCheck(plr.plr)) and (not targetCheck or api.isTargetable(plr.plr)) and api.isVisible(part.Position, wallCheck) then
-					local screenPos, vis = camera:WorldToViewportPoint(part.Position)
-					if screenPos and vis then
-						local pos = Vector2.new(screenPos.X, screenPos.Y)
-						local magnitude = (pos - userInputService:GetMouseLocation()).Magnitude
-						if distance > magnitude then
-							if maxEntities == 1 then return plr end
-							table.insert(entities, plr)
-						end
+	for _, plr in next, ((players and npcs and api.entities) or (players and api.players) or (npcs and api.npcs) or {}) do
+		if plr.plr ~= lplr and plr.alive then
+			local part = plr[targetPart]
+			if not part then return end
+			if (not teamCheck or api.teamCheck(plr.plr)) and (not targetCheck or api.isTargetable(plr.plr)) and (not wallCheck or api.wallCheck(part.Position, plr.character)) then
+				local magnitude = (api.root.Position - part.Position).Magnitude
+				if distance > magnitude then
+					if maxEntities == 1 and not closest then return {plr} end
+
+					table.insert(entities, plr)
+				end
+			end
+		end
+	end
+
+	if closest then
+		table.sort(entities, function(a, b)
+			return (api.root.Position - a[targetPart].Position.Position).Magnitude < (api.root.Position - b[targetPart].Position.Position).Magnitude
+		end)
+	end
+
+	local newEntities = {}
+	for i = 1, maxEntities do
+		newEntities[i] = entities[i]
+	end
+
+	return newEntities
+end
+
+function api.entitiesAroundMouse(args)
+	local distance = args.maxDistance or 100
+	local targetCheck = args.targetCheck == nil and false or args.targetCheck
+	local teamCheck = args.teamCheck == nil and false or args.teamCheck
+	local wallCheck = args.wallCheck == nil and false or args.wallCheck
+	local targetPart = args.targetPart or 'root'
+	targetPart = (targetPart == 'RootPart' and 'root' or targetPart):lower()
+	local players = args.players == nil and true or args.players
+	local npcs = args.npcs == nil and false or args.npcs
+	local closest = args.closest == nil and false or args.closest
+	local maxEntities = args.maxEntities or 1
+	local entities = {}
+
+	for _, plr in next, ((players and npcs and api.entities) or (players and api.players) or (npcs and api.npcs) or {}) do
+		if plr.plr ~= lplr and plr.alive then
+			local part = plr[targetPart]
+			if not part then return end
+			if (not teamCheck or api.teamCheck(plr.plr)) and (not targetCheck or api.isTargetable(plr.plr)) and (not wallCheck or api.wallCheck(part.Position, plr.character)) then
+				local screenPos, vis = camera:WorldToViewportPoint(part.Position)
+				if screenPos and vis then
+					local pos = Vector2.new(screenPos.X, screenPos.Y)
+					local magnitude = (pos - userInputService:GetMouseLocation()).Magnitude
+					if distance > magnitude then
+						if maxEntities == 1 and not closest then return {plr} end
+
+						table.insert(entities, plr)
 					end
 				end
 			end
 		end
 	end
 
-	return entities
+	if closest then
+		table.sort(entities, function(a, b)
+			local aScreenPos, bScreenPos = camera:WorldToViewportPoint(a[targetPart].Position), camera:WorldToViewportPoint(b[targetPart].Position)
+			local aPos, bPos = Vector2.new(aScreenPos.X, aScreenPos.Y), Vector2.new(bScreenPos.X, bScreenPos.Y)
+			local aMagnitude, bMagnitude = (aPos - userInputService:GetMouseLocation()).Magnitude, (bPos - userInputService:GetMouseLocation()).Magnitude
+
+			return aMagnitude < bMagnitude
+		end)
+	end
+
+	local newEntities = {}
+	for i = 1, maxEntities do
+		newEntities[i] = entities[i]
+	end
+
+	return newEntities
 end
 
 function api.entitiesAroundPosition(args)
@@ -214,25 +263,21 @@ function api.entitiesAroundPosition(args)
 	local teamCheck = args.teamCheck or false
 	local targetCheck = args.targetCheck or false
 	local wallCheck = args.wallCheck or false
-	local visibleCheck = args.visibleCheck or false
 	local targetPart = args.targetPart or 'root'
 	targetPart = (targetPart == 'RootPart' and 'root' or targetPart):lower()
-	local players = args.players or false
+	local players = args.players == nil and true or args.players
 	local npcs = args.npcs or false
 	local maxEntities = args.maxEntities or 1
 	local entities = {}
 
-	if players then
-		for _, plr in next, api.players do
-			--print('in entitiesaroundmouse plr', plr, plr.plr, plr.alive, plr.npc)
-			if plr.plr ~= lplr and plr.alive then
-				local part = plr[targetPart]
-				if (not teamCheck or api.teamCheck(plr.plr)) and (not targetCheck or api.isTargetable(plr.plr)) and (not visibleCheck or api.isVisible(part.Position, wallCheck, part)) then
-					local magnitude = (part.Position - position).Magnitude
-					if distance > magnitude then
-						if maxEntities == 1 then return plr end
-						table.insert(entities, plr)
-					end
+	for _, plr in next, players and npcs and api.entities or players and api.players or npcs and api.npcs or {} do
+		if plr.plr ~= lplr and plr.alive then
+			local part = plr[targetPart]
+			if (not teamCheck or api.teamCheck(plr.plr)) and (not targetCheck or api.isTargetable(plr.plr)) and (not wallCheck or api.wallCheck(part.Position, part)) then
+				local magnitude = (part.Position - position).Magnitude
+				if distance > magnitude then
+					if maxEntities == 1 then return plr end
+					table.insert(entities, plr)
 				end
 			end
 		end
@@ -249,6 +294,18 @@ function api.getPlayers(aliveOnly)
 		end
 	end
 	return players
+end
+
+function api.getEntityByPart(part, targetCheck, teamCheck, wallCheck)
+	for _, plr in next, api.players do
+		if (not targetCheck or api.isTargetable(plr.plr, plr)) and (not teamCheck or api.teamCheck(plr)) and (not wallCheck or api.wallCheck(plr)) then
+			for _, v in next, plr.character:GetChildren() do
+				if v == part then
+					return plr
+				end
+			end
+		end
+	end
 end
 
 function api.addConnections(name, data)
@@ -324,20 +381,19 @@ function api.addPlayer(character, plr)
 
     local plrConnections = {}
 	local clearingConnections = {}
-	local plrTable = {
+	local entity = {
 		plrConnections = plrConnections,
 		origin = 'universal'
 	}
 
-	api.addConnections('characterAdded', plrTable)
-	api.addConnections('characterRemoving', plrTable)
-	api.addConnections('healthChanged', plrTable)
+	api.addConnections('characterAdded', entity)
+	api.addConnections('characterRemoving', entity)
+	api.addConnections('healthChanged', entity)
 
 	local data = getPlayerData(character, plr)
 
 	if not data.character or not data.humanoid then
-		--print(plrTable, plr, ' player doesnt have either character or humanoid ', data.character, data.humanoid, data.humanoidTimeout)
-		plrTable.characterRemoving:Fire()
+		entity.characterRemoving:Fire()
 		disconnect(plrConnections.humanoidConnection)
 
 		api.removePlayer(plr)
@@ -348,9 +404,9 @@ function api.addPlayer(character, plr)
 	for name, value in next, data do
 		if plr == lplr then
 			api[name] = value
-			plrTable[name] = value
+			entity[name] = value
 		else
-			plrTable[name] = value
+			entity[name] = value
 		end
 	end
 
@@ -363,12 +419,12 @@ function api.addPlayer(character, plr)
 				if plr == lplr then
 					api[name] = value
 				else
-					plrTable[name] = value
+					entity[name] = value
 				end
 			end
 
 			if plr == lplr then
-				api.characterAdded:Fire(plrTable)
+				api.characterAdded:Fire(entity)
 
 				table.insert(clearingConnections, plr.character.ChildAdded:Connect(function(child)
 					if child.ClassName == 'Tool' then
@@ -381,15 +437,15 @@ function api.addPlayer(character, plr)
 					end
 				end))
 
-				if plrTable.humanoid then
-					table.insert(clearingConnections, plrTable.humanoid:GetPropertyChangedSignal('Health'):Connect(function()
-						api.players[lplr.Name].health = plrTable.humanoid.CurrentHealth
-						plrTable.healthChanged:Fire(plrTable.humanoid.CurrentHealth)
+				if entity.humanoid then
+					table.insert(clearingConnections, entity.humanoid:GetPropertyChangedSignal('Health'):Connect(function()
+						api.players[lplr.Name].health = entity.humanoid.CurrentHealth
+						entity.healthChanged:Fire(entity.humanoid.CurrentHealth)
 					end))
 				end
 			end
 
-			plrTable.characterAdded:Fire()
+			entity.characterAdded:Fire()
 		end))
 
 		table.insert(plrConnections, plr.CharacterRemoving:Connect(function()
@@ -397,49 +453,50 @@ function api.addPlayer(character, plr)
 				if plr == lplr then
 					api[name] = value
 				else
-					plrTable[name] = value
+					entity[name] = value
 				end
 			end
 
 			if plr == lplr then
-				api.characterRemoving:Fire(plrTable)
+				api.characterRemoving:Fire(entity)
 				for _, connection in next, clearingConnections do connection:Disconnect() end
 			end
 
-			plrTable.characterRemoving:Fire()
+			entity.characterRemoving:Fire()
 			disconnect(plrConnections.humanoidConnection)
 		end))
 	end
 
-	table.insert(plrConnections, plrTable.character.DescendantRemoving:Connect(function(descendant)
+	table.insert(plrConnections, entity.character.DescendantRemoving:Connect(function(descendant)
 		if descendant.ClassName == 'Humanoid' then
-			plrTable.characterRemoving:Fire()
+			entity.characterRemoving:Fire()
 			disconnect(plrConnections.humanoidConnection)
 
-			api.playerRemoving:Fire(plrTable) -- // calling it first so it fires with playertable
+			api.playerRemoving:Fire(entity) -- // calling it first so it fires with playertable
 			api.removePlayer(plr)
 		end
 	end))
 
-	if plrTable.humanoid then
-		table.insert(plrConnections, plrTable.humanoid:GetPropertyChangedSignal('Health'):Connect(function()
-			if plrTable.humanoid.Health <= 0 then
-				plrTable.characterRemoving:Fire()
+	if entity.humanoid then
+		table.insert(plrConnections, entity.humanoid:GetPropertyChangedSignal('Health'):Connect(function()
+			if entity.humanoid.Health <= 0 then
+				entity.characterRemoving:Fire()
 				disconnect(plrConnections.humanoidConnection)
 
-				api.playerRemoving:Fire(plrTable) -- // calling it first so it fires with playertable
+				api.playerRemoving:Fire(entity) -- // calling it first so it fires with playertable
 				api.removePlayer(plr)
 			end
 		end))
 	end
 
 	plr = plr or character
-	api.players[plr.Name] = plrTable
+	api.entities[plr.Name] = entity
+	api[entity.npc and 'npcs' or 'players'][plr.Name] = entity
 	api.connections[plr.Name] = plrConnections
 
-	api.playerAdded:Fire(plrTable)
+	api.playerAdded:Fire(entity)
 
-	return plrTable
+	return entity
 end
 
 function api.removePlayer(plrModel)

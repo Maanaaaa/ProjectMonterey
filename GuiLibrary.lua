@@ -69,11 +69,9 @@ local lplr = players.LocalPlayer
 local textBoundsParams = Instance.new('GetTextBoundsParams')
 local coreGui
 
-local components = loadstring(getFile('ProjectMonterey/Libraries/Components.lua'))()
 local notifications = shared.montereyNotifications or loadstring(getFile('ProjectMonterey/Libraries/Notifications.lua'))()
 shared.montereyNotifications = notifications
 local signalLibrary = loadstring(getFile('ProjectMonterey/Libraries/SignalLibrary.lua'))()
-library.components = components
 library.signalLibrary = signalLibrary
 
 library.unload = signalLibrary.createSignal('Unload')
@@ -94,14 +92,14 @@ notificationsFolder.Name = 'Notifications'
 
 local function addCorner(obj, radius, topLeft, topRight, bottomLeft, bottomRight)
     if not obj then return end
-    local uiCorner = Instance.new('UICorner', obj)
-    uiCorner.CornerRadius = radius or UDim.new(0, 0)
-    uiCorner.TopLeftRadius = topLeft or radius
-    uiCorner.TopRightRadius = topRight or radius
-    uiCorner.BottomLeftRadius = bottomLeft or radius
-    uiCorner.BottomRightRadius = bottomRight or radius
+    local corner = Instance.new('UICorner', obj)
+    corner.CornerRadius = radius or UDim.new(0, 0)
+    corner.TopLeftRadius = topLeft or radius
+    corner.TopRightRadius = topRight or radius
+    corner.BottomLeftRadius = bottomLeft or radius
+    corner.BottomRightRadius = bottomRight or radius
 
-    return uiCorner
+    return corner
 end
 
 local function addGradient(obj, color, rotation, enabled)
@@ -252,9 +250,17 @@ function library:addClean(api)
         if typeof(args) == 'Instance' then
             local arg = {}
             function arg:Disconnect()
-                arg:ClearAllChildren()
-                arg:Destroy()
+                args:ClearAllChildren()
+                args:Destroy()
             end
+
+            table.insert(api.connections, arg)
+        elseif typeof(args) == 'function' then
+            local arg = {}
+            function arg:Disconnect()
+                args()
+            end
+
             table.insert(api.connections, arg)
         else
             table.insert(api.connections, args)
@@ -403,7 +409,7 @@ function library:CreateWindow(title)
     window.Position = UDim2.fromOffset(10, 100)--200UDim2.new(-window.Size.X.Scale / 2, screenGui.AbsoluteSize.X / 2, -window.Size.Y.Scale / 2, screenGui.AbsoluteSize.Y / 2)
     window.Visible = false
     addCorner(window, UDim.new(0, 11))
-    components.uiStroke(window, Color3.fromRGB(), 2)
+    addStroke(window, Color3.fromRGB(), 2)
     windowapi.container = window
     library.windowapi = windowapi
     local background = Instance.new('Frame', window)
@@ -413,7 +419,7 @@ function library:CreateWindow(title)
     background.Size = UDim2.fromScale(1, 1)
     background.ZIndex = 1
     addCorner(background, UDim.new(0, 11))
-    components.uiStroke(background, Color3.fromRGB(96, 94, 100))
+    addStroke(background, Color3.fromRGB(96, 94, 100))
     local trafficLight = Instance.new('Frame', background)
     trafficLight.BackgroundTransparency = 1
     trafficLight.BorderSizePixel = 0
@@ -471,7 +477,7 @@ function library:CreateWindow(title)
     leftBar.Size = UDim2.new(0, 147, 1, 0)
     leftBar.ZIndex = 2
     addCorner(leftBar, UDim.new(0, 11), UDim.new(0, 11), UDim.new(0, 0), UDim.new(0, 11), UDim.new(0, 0))
-    local uiGradient = components.uiGradient(
+    local gradient = addGradient(
         leftBar,
         ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 42, 84)), ColorSequenceKeypoint.new(1, Color3.fromRGB(46, 38, 70))},
         90
@@ -485,9 +491,9 @@ function library:CreateWindow(title)
     container.ScrollBarThickness = 7
     container.ScrollBarImageTransparency = 1
     container.ScrollingDirection = Enum.ScrollingDirection.Y
-    local uiListLayout = components.uiListLayout(container, Enum.FillDirection.Vertical, UDim.new(0, 18))
+    local uiListLayout = addList(container, Enum.FillDirection.Vertical, UDim.new(0, 18))
     uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    components.uiPadding(container, 7)
+    addPadding(container, UDim.new(0, 7))
     local topBar = Instance.new('Frame', background)
     topBar.BackgroundColor3 = Color3.fromRGB(34, 30, 38)
     topBar.BorderSizePixel = 0
@@ -531,12 +537,12 @@ function library:CreateWindow(title)
     searchBar.Size = UDim2.fromOffset(160, 26)
     searchBar.Visible = false
     addCorner(searchBar, UDim.new(0, 6))
-    local searchStroke = components.uiStroke(searchBar,
+    local searchStroke = addStroke(searchBar,
         Color3.fromRGB(54, 116, 160),
         1,
         5
     )
-    local searchStroke2 = components.uiStroke(searchBar,
+    local searchStroke2 = addStroke(searchBar,
         Color3.fromRGB(47, 109, 154),
         4
     )
@@ -573,20 +579,20 @@ function library:CreateWindow(title)
     searchContainer.BackgroundTransparency = 0.2
     searchContainer.Position = UDim2.fromOffset(-1, 30)
     addCorner(searchContainer, UDim.new(0, 6))
-    components.uiStroke(searchContainer,
+    addStroke(searchContainer,
         Color3.fromRGB(37, 39, 54),
         1,
         5,
         0.5
     )
-    components.uiStroke(searchContainer,
+    addStroke(searchContainer,
         Color3.fromRGB(),
         2,
         1,
         0.5
     )
-    local uiListLayout = components.uiListLayout(searchContainer)
-    components.uiPadding(searchContainer, 9)
+    local uiListLayout = addList(searchContainer)
+    addPadding(searchContainer, UDim.new(0, 9))
 
     library:setZIndex(trafficLight, 10)
     library:setZIndex(leftBar)
@@ -823,7 +829,7 @@ function library:CreateWindow(title)
         container.BorderSizePixel = 0
         container.Position = UDim2.fromOffset(0, 15)
         container.Size = UDim2.fromScale(1, 0)
-        components.uiListLayout(container)
+        addList(container)
         sectionapi.container = container
 
         library:setZIndex(section)
@@ -943,13 +949,14 @@ function library:CreateWindow(title)
             togglesContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
             togglesContainer.BackgroundTransparency = 1
             togglesContainer.BorderSizePixel = 0
+            togglesContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
             togglesContainer.Position = UDim2.fromOffset(0, -2)
             togglesContainer.Size = UDim2.new(0, 171, 1, 2)
             togglesContainer.ScrollBarThickness = 7
             togglesContainer.ScrollBarImageTransparency = 1
             togglesContainer.ScrollingDirection = Enum.ScrollingDirection.Y
-            components.uiListLayout(togglesContainer)
-            components.uiPadding(togglesContainer, 10)
+            addList(togglesContainer)
+            addPadding(togglesContainer, UDim.new(0, 10))
             local optionsContainer = Instance.new('ScrollingFrame', container)
             optionsContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
             optionsContainer.BackgroundTransparency = 1
@@ -960,8 +967,8 @@ function library:CreateWindow(title)
             optionsContainer.ScrollBarThickness = 7
             optionsContainer.ScrollBarImageTransparency = 1
             optionsContainer.ScrollingDirection = Enum.ScrollingDirection.Y
-            components.uiListLayout(optionsContainer)
-            components.uiPadding(optionsContainer, 10)
+            addList(optionsContainer)
+            addPadding(optionsContainer, UDim.new(0, 10))
 
             function tabapi:SelectToggle(name, addtoPages)
                 if not name then return end
@@ -1074,7 +1081,7 @@ function library:CreateWindow(title)
                 toggle.Image = getcustomasset('ProjectMonterey/Assets/Gui/CheckMark.png')
                 toggle.ImageTransparency = 1
                 addCorner(toggle, UDim.new(0, 4))
-                local uiGradient = components.uiGradient(toggle,
+                local gradient = addGradient(toggle,
                     ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(68, 63, 73)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(79, 74, 83)), ColorSequenceKeypoint.new(1, Color3.fromRGB(97, 92, 100))},
                     90
                 )
@@ -1086,7 +1093,7 @@ function library:CreateWindow(title)
                 container.Size = UDim2.fromScale(1, 0)
                 container.Position = UDim2.fromOffset(0, 50)
                 container.Visible = false
-                components.uiListLayout(container)
+                addList(container)
                 toggleapi.optionsContainer = container
                 local textSize = library:getTextSize(longDescription, pallet.fontFace(), 12)
                 if textSize.Y > 12 then
@@ -1124,7 +1131,7 @@ function library:CreateWindow(title)
                     holder.BackgroundTransparency = bool and 0.88 or 1
                     toggle.BackgroundTransparency = bool and 1 or 0
                     toggle.ImageTransparency = bool and 0 or 1
-                    uiGradient.Enabled = not bool
+                    gradient.Enabled = not bool
 
                     notifications:CreateNotification({
                         Title = name,
@@ -1194,7 +1201,7 @@ function library:CreateWindow(title)
                     toggle.Image = getcustomasset('ProjectMonterey/Assets/Gui/CheckMark.png')
                     toggle.ImageTransparency = 1
                     addCorner(toggle, UDim.new(0, 4))
-                    local uiGradient = components.uiGradient(toggle,
+                    local gradient = addGradient(toggle,
                         ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(68, 63, 73)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(79, 74, 83)), ColorSequenceKeypoint.new(1, Color3.fromRGB(97, 92, 100))},
                         90
                     )
@@ -1235,7 +1242,7 @@ function library:CreateWindow(title)
                         optionapi.Enabled = bool
                         toggle.BackgroundTransparency = bool and 1 or 0
                         toggle.ImageTransparency = bool and 0 or 1
-                        uiGradient.Enabled = not bool
+                        gradient.Enabled = not bool
 
                         task.spawn(function()
                             local suc, res = pcall(function()
@@ -1313,7 +1320,7 @@ function library:CreateWindow(title)
                     arrowsHolder.Position = UDim2.new(1, -18, 0, 2)
                     arrowsHolder.Size = UDim2.fromOffset(16, 16)
                     addCorner(arrowsHolder, UDim.new(0, 4))
-                    local uiGradient = components.uiGradient(arrowsHolder,
+                    local gradient = addGradient(arrowsHolder,
                         ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(23, 104, 229)), ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 93, 205))},
                         90
                     )
@@ -1345,8 +1352,8 @@ function library:CreateWindow(title)
                     optionsHolder.Size = UDim2.new(1, 0, 0, 0)
                     optionsHolder.Visible = false
                     addCorner(optionsHolder, UDim.new(0, 6))
-                    components.uiStroke(optionsHolder, Color3.fromRGB(), 2)
-                    local uiGradient = components.uiGradient(optionsHolder,
+                    addStroke(optionsHolder, Color3.fromRGB(), 2)
+                    local gradient = addGradient(optionsHolder,
                         ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(56, 50, 64)), ColorSequenceKeypoint.new(1, Color3.fromRGB(47, 41, 55))},
                         90
                     )
@@ -1355,9 +1362,9 @@ function library:CreateWindow(title)
                     container.BorderSizePixel = 0
                     container.Size = UDim2.fromScale(1, 1)
                     addCorner(container, UDim.new(0, 6))
-                    components.uiStroke(container, Color3.fromRGB(96, 94, 100))
-                    local uiListLayout = components.uiListLayout(container)
-                    components.uiPadding(container, 4)
+                    addStroke(container, Color3.fromRGB(96, 94, 100))
+                    local uiListLayout = addList(container)
+                    addPadding(container, UDim.new(0, 4))
 
                     function dropdownapi:Save(data)
                         data[dropdownapi.Name] = {
@@ -1416,7 +1423,7 @@ function library:CreateWindow(title)
                         holder.Size = UDim2.new(1, -8, 0, 22)
                         holder.LayoutOrder = #dropdownapi.Options
                         addCorner(holder, UDim.new(0, 4))
-                        local uiGradient = components.uiGradient(holder,
+                        local gradient = addGradient(holder,
                             ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(29, 96, 203)), ColorSequenceKeypoint.new(1, Color3.fromRGB(27, 94, 200))},
                             90,
                             false
@@ -1446,7 +1453,7 @@ function library:CreateWindow(title)
                         table.insert(dropdownapi.Options, {
                             name = name,
                             holder = holder,
-                            uiGradient = uiGradient,
+                            gradient = addGradient,
                             checkMark = checkMark,
                             text = text,
                             button = button
@@ -1455,11 +1462,11 @@ function library:CreateWindow(title)
                         library:setZIndex(optionsHolder, 15)
                         library:Clean(holder.MouseEnter:Connect(function()
                             holder.BackgroundTransparency = 0
-                            uiGradient.Enabled = true
+                            gradient.Enabled = true
                         end))
                         library:Clean(holder.MouseLeave:Connect(function()
                             holder.BackgroundTransparency = 1
-                            uiGradient.Enabled = false
+                            gradient.Enabled = false
                         end))
                         library:Clean(button.MouseButton1Click:Connect(function()
                             dropdownapi:Set(name)
@@ -1502,6 +1509,7 @@ function library:CreateWindow(title)
                     local default = args.Default or min
                     local suffix = args.Suffix
                     local suffixEnding = args.SuffixEnding
+                    local suffixValueOnly = args.SuffixValueOnly == nil and true or args.SuffixValueOnly
                     local dividersAmount = args.DividersAmount
                     local dividers = {}
                     local callback = args.Callback or function() end
@@ -1549,8 +1557,9 @@ function library:CreateWindow(title)
                     dragBar.ZIndex = 5
                     addCorner(dragBar, UDim.new(0, 4))
 
-                    local function getSuffix(value)
+                    local function getSuffix(value, type)
                         value = value or sliderapi.Value
+                        local suffix = not suffixValueOnly and type ~= 'Divider' and suffix or suffix and suffixValueOnly and type ~= 'Divider' and suffix or nil --suffix and type == 'Divider' and suffixValueOnly and nil or suffix
                         return suffix and (typeof(suffix) == 'string' and (suffixEnding and (value == 1 and suffix or suffix..'s') or suffix or '') or suffix(value)) or ''
                     end
 
@@ -1567,7 +1576,7 @@ function library:CreateWindow(title)
                         dividerBarText.Position = UDim2.new(0, 0, 1, 7)
                         dividerBarText.Size = UDim2.fromOffset(10, 10)
                         dividerBarText.FontFace = pallet.fontFace()
-                        dividerBarText.Text = value..' '..getSuffix(value)
+                        dividerBarText.Text = value..' '..getSuffix(value, 'Divider')
                         dividerBarText.TextColor3 = Color3.fromRGB(222, 221, 223)
                         dividerBarText.TextSize = 11
                         dividerBarText.TextXAlignment = Enum.TextXAlignment.Left
@@ -1609,7 +1618,7 @@ function library:CreateWindow(title)
                         local x = (math.floor((math.clamp(value, min, max) * (10 ^ decimal)) + 0.5) / (10 ^ decimal) -  min) / (max - min)
 
                         sliderapi.Value = value
-                        currentText.Text = value..' '..getSuffix()
+                        currentText.Text = value..' '..getSuffix(value, 'Value')
                         dragBar.Position = UDim2.new(x, 0, 0, -8)
 
                         task.spawn(function()
@@ -1699,7 +1708,7 @@ function library:CreateWindow(title)
                         Dropdown = dropdown
                     }
 
-                    local customColorBox, customuiStroke
+                    local customColorBox, customaddStroke
                     for _, option in next, dropdown.Options do
                         local color = option.name == 'Custom' and colorpickerapi.Value or colorsList[option.name]
                         local h, s, v = color:ToHSV()
@@ -1708,15 +1717,15 @@ function library:CreateWindow(title)
                         colorBox.BorderSizePixel = 0
                         colorBox.Size = UDim2.fromOffset(22, 10) --17 + 22
                         colorBox.Position = UDim2.fromOffset(19, 6)
-                        local uiStroke = components.uiStroke(colorBox, Color3.fromHSV(h, s - 0.2, v))
-                        option.uiStroke = uiStroke
+                        local addStroke = addStroke(colorBox, Color3.fromHSV(h, s - 0.2, v))
+                        option.addStroke = addStroke
                         option.text.Position = UDim2.fromOffset(48, 0)
                         option.color = color
                         library:setZIndex(option.holder, 15)
 
                         if option.name == 'Custom' then
                             customColorBox = colorBox
-                            customuiStroke = uiStroke
+                            customaddStroke = addStroke
                         end
                     end
 
@@ -1726,7 +1735,7 @@ function library:CreateWindow(title)
                     colorBox.Size = UDim2.fromOffset(22, 10) --17 + 22
                     colorBox.Position = UDim2.fromOffset(8, 5)
                     local h, s, v = colorpickerapi.Value:ToHSV()
-                    local uiStroke = components.uiStroke(colorBox, Color3.fromHSV(h, s - 0.2, v))
+                    local addStroke = addStroke(colorBox, Color3.fromHSV(h, s - 0.2, v))
                     dropdown.container.holder.currentText.Position = UDim2.fromOffset(34, 0)
                     dropdown.container.holder.currentText.Size = UDim2.new(1, -34, 1, 0)
 
@@ -1813,8 +1822,8 @@ function library:CreateWindow(title)
                     darknessLine.AutoButtonColor = false
                     darknessLine.Text = ''
                     addCorner(darknessLine, UDim.new(0, 3))
-                    local uiGradient = components.uiGradient(darknessLine)
-                    uiGradient.Rotation = 0
+                    local gradient = addGradient(darknessLine)
+                    gradient.Rotation = 0
                     local knob = Instance.new('TextButton', darknessLine)
                     knob.BackgroundColor3 = Color3.fromRGB(153, 153, 153)
                     knob.BorderSizePixel = 0
@@ -1838,7 +1847,7 @@ function library:CreateWindow(title)
                         colorpickerapi.Value = value
                         colorBox.BackgroundColor3 = value
                         local h, s, v = value:ToHSV()
-                        uiStroke.Color = Color3.fromHSV(h, s - 0.2, v)
+                        addStroke.Color = Color3.fromHSV(h, s - 0.2, v)
                     end
 
                     function colorpickerapi:Save(data)
@@ -1877,11 +1886,11 @@ function library:CreateWindow(title)
                         picker.Position = UDim2.fromScale(0.5 + h.X, 0.5 + h.Y)
                         picker.Position = UDim2.fromScale(0, 1 - v)
                         customColorBox.BackgroundColor3 = value
-                        customuiStroke.Color = Color3.fromHSV(h, s - 0.2, v)
+                        customaddStroke.Color = Color3.fromHSV(h, s - 0.2, v)
                         colorBox.BackgroundColor3 = value
-                        uiStroke.Color = Color3.fromHSV(h, s - 0.2, v)
+                        addStroke.Color = Color3.fromHSV(h, s - 0.2, v)
                         currentColor.BackgroundColor3 = value
-                        uiGradient.Color = ColorSequence.new{
+                        gradient.Color = ColorSequence.new{
                             ColorSequenceKeypoint.new(0, value),
                             ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
                         }
@@ -1902,11 +1911,11 @@ function library:CreateWindow(title)
 
                         colorpickerapi.Value = value
                         customColorBox.BackgroundColor3 = value
-                        customuiStroke.Color = Color3.fromHSV(h, s - 0.2, v)
+                        customaddStroke.Color = Color3.fromHSV(h, s - 0.2, v)
                         colorBox.BackgroundColor3 = value
-                        uiStroke.Color = Color3.fromHSV(h, s - 0.2, v)
+                        addStroke.Color = Color3.fromHSV(h, s - 0.2, v)
                         currentColor.BackgroundColor3 = value
-                        uiGradient.Color = ColorSequence.new{
+                        gradient.Color = ColorSequence.new{
                             ColorSequenceKeypoint.new(0, value),
                             ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
                         }
@@ -1924,11 +1933,11 @@ function library:CreateWindow(title)
                         colorpickerapi.Value = value
                         knob.Position = UDim2.new(v, -4, 0, -3)
                         customColorBox.BackgroundColor3 = value
-                        customuiStroke.Color = Color3.fromHSV(h, s - 0.2, v)
+                        customaddStroke.Color = Color3.fromHSV(h, s - 0.2, v)
                         colorBox.BackgroundColor3 = value
-                        uiStroke.Color = Color3.fromHSV(h, s - 0.2, 1 - v)
+                        addStroke.Color = Color3.fromHSV(h, s - 0.2, 1 - v)
                         currentColor.BackgroundColor3 = value
-                        uiGradient.Color = ColorSequence.new{
+                        gradient.Color = ColorSequence.new{
                             ColorSequenceKeypoint.new(0, value),
                             ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
                         }
@@ -2086,7 +2095,7 @@ function library:CreateWindow(title)
                 container.Size = UDim2.fromScale(1, 0)
                 container.Position = UDim2.fromOffset(0, holder2 and 50 or 0)
                 container.Visible = false
-                --components.uiListLayout(container)
+                --addList(container)
                 pageapi.optionsContainer = container
 
                 if not holder2 then pageapi.optionsHolder = container end
